@@ -76,11 +76,17 @@ data = dict(
             ann_file='data/inria/' + 'annotations/train.json',
             img_prefix='data/inria/' + 'images/',
             pipeline=train_pipeline),
+        # dict(
+        #     with_reid=with_reid,
+        #     type='CuhkDataset',
+        #     ann_file='data/cuhk/' + 'annotations/train.json',
+        #     img_prefix='data/cuhk/' + 'images/',
+        #     pipeline=train_pipeline),
         dict(
             with_reid=with_reid,
-            type='CuhkDataset',
-            ann_file='data/cuhk/' + 'annotations/train.json',
-            img_prefix='data/cuhk/' + 'images/',
+            type='DukemtmcDataset',
+            ann_file='data/dukemtmc/' + 'annotations/train.json',
+            img_prefix='data/dukemtmc/' + 'images/',
             pipeline=train_pipeline),
 
     ],
