@@ -89,7 +89,8 @@ def train_detector(model,
         optimizer=optimizer,
         work_dir=cfg.work_dir,
         logger=logger,
-        meta=meta)
+        meta=meta,
+        use_moco=True)
     # an ugly workaround to make .log and .log.json filenames the same
     runner.timestamp = timestamp
 

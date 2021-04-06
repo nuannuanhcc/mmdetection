@@ -19,10 +19,7 @@ class REIDModule(torch.nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         feats = F.normalize(x, dim=-1)
-        if not self.training:
-            return feats
-        loss_reid = self.loss_evaluator(feats, gt_labels)
-        return {"loss_reid": [loss_reid], }
+        return feats
 
 
 def build_reid(cfg):

@@ -55,7 +55,8 @@ class BaseRunner(metaclass=ABCMeta):
                  logger=None,
                  meta=None,
                  max_iters=None,
-                 max_epochs=None):
+                 max_epochs=None,
+                 use_moco=None):
         if batch_processor is not None:
             if not callable(batch_processor):
                 raise TypeError('batch_processor must be callable, '
@@ -102,6 +103,16 @@ class BaseRunner(metaclass=ABCMeta):
         self.optimizer = optimizer
         self.logger = logger
         self.meta = meta
+
+        # create momentum model
+        self.use_moco = use_moco
+        if self.use_moco:
+            import copy
+            self.momentum_encoder = copy.deepcopy(self.model)
+            for param in self.momentum_encoder.parameters():
+                param.requires_grad_(False)
+        else:
+            self.momentum_encoder = None
 
         # create work_dir
         if mmcv.is_str(work_dir):

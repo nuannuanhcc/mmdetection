@@ -26,7 +26,13 @@ class EpochBasedRunner(BaseRunner):
             outputs = self.batch_processor(
                 self.model, data_batch, train_mode=train_mode, **kwargs)
         elif train_mode:
-            outputs = self.model.train_step(data_batch, self.optimizer,
+
+            if self.use_moco:
+                with torch.no_grad():
+                    for k_param, q_param in zip(self.momentum_encoder.parameters(), self.model.parameters()):
+                        torch.lerp(k_param.data, q_param.data, weight=1 - 0.999, out=k_param.data)
+
+            outputs = self.model.train_step(data_batch, self.momentum_encoder, self.optimizer,
                                             **kwargs)
         else:
             outputs = self.model.val_step(data_batch, self.optimizer, **kwargs)
@@ -39,6 +45,8 @@ class EpochBasedRunner(BaseRunner):
 
     def train(self, data_loader, **kwargs):
         self.model.train()
+        if self.use_moco:
+            self.momentum_encoder.train()
         self.mode = 'train'
         self.data_loader = data_loader
         self._max_iters = self._max_epochs * len(self.data_loader)

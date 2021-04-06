@@ -204,7 +204,7 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
 
         return loss, log_vars
 
-    def train_step(self, data, optimizer):
+    def train_step(self, data, momentum_encoder, optimizer):
         """The iteration step during training.
 
         This method defines an iteration step during training, except for the
@@ -231,7 +231,16 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
                 DDP, it means the batch size on each GPU), which is used for \
                 averaging the logs.
         """
-        losses = self(**data)
+        if momentum_encoder is not None:
+            data_k = data.copy()
+            data_k['img_metas'] = 'use_moco'
+            feats_k = momentum_encoder(**data_k)
+        else:
+            feats_k = None
+
+        losses, feats = self(**data)
+        loss_reid = self.reid_head.loss_evaluator(feats, data['gt_labels'], feats_k)
+        losses.update({"loss_reid": [loss_reid], })
         loss, log_vars = self._parse_losses(losses)
 
         outputs = dict(

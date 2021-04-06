@@ -97,15 +97,21 @@ class SingleStageDetector(BaseDetector):
         """
 
         x = self.extract_feat(img)
+
+        if img_metas == 'use_moco':
+            bbox_feats = self.bbox_roi_extractor(
+                x[:self.bbox_roi_extractor.num_inputs], bbox2roi(gt_bboxes))
+            feats = self.reid_head(bbox_feats, gt_labels)
+            return feats
+
         cls_labels = [i[:, 0] for i in gt_labels] if self.train_cfg.with_reid else gt_labels
         losses = self.bbox_head.forward_train(x, img_metas, gt_bboxes,
                                               cls_labels, gt_bboxes_ignore)
         if self.train_cfg.with_reid:
             bbox_feats = self.bbox_roi_extractor(
                 x[:self.bbox_roi_extractor.num_inputs], bbox2roi(gt_bboxes))
-            loss_reid = self.reid_head(bbox_feats, gt_labels)
-            losses.update(loss_reid)
-        return losses
+            feats = self.reid_head(bbox_feats, gt_labels)
+        return losses, feats
 
     def simple_test(self, img, img_metas, rescale=False, gt_bboxes=None):
         """Test function without test time augmentation.

@@ -92,7 +92,7 @@ class OIMLossComputation(nn.Module):
         self.register_buffer('lut', torch.zeros(self.num_pid, self.out_channels).cuda())
         self.register_buffer('queue', torch.zeros(self.queue_size, self.out_channels).cuda())
 
-    def forward(self, features, gt_labels):
+    def forward(self, features, gt_labels, features_k=None):
 
         pids = torch.cat([i[:, -1] for i in gt_labels])
         num_gt = pids.shape[0]
@@ -126,21 +126,28 @@ class CIRCLELossComputation(nn.Module):
         self.register_buffer('lut', torch.zeros(num_labeled, self.out_channels).cuda())
         self.register_buffer('queue', torch.zeros(num_unlabeled, self.out_channels).cuda())
 
-    def forward(self, features, gt_labels):
+    def forward(self, features, gt_labels, features_k=None):
 
         pids = torch.cat([i[:, -1] for i in gt_labels])
         id_labeled = pids[pids > -1]
         feat_labeled = features[pids > -1]
         feat_unlabeled = features[pids == -1]
+        if features_k is not None:
+            feat_labeled_k = features_k[pids > -1]
+            feat_unlabeled_k = features_k[pids == -1]
+
 
         if not id_labeled.numel():
             loss = F.cross_entropy(features.mm(self.lut.t()), pids, ignore_index=-1)
             return loss
 
-        self.lut, _ = update_queue(self.lut, self.pointer[0], feat_labeled)
+        feat_lut = feat_labeled_k if features_k is not None else feat_labeled
+        self.lut, _ = update_queue(self.lut, self.pointer[0], feat_lut)
 
         self.id_inx, self.pointer[0] = update_queue(self.id_inx, self.pointer[0], id_labeled)
-        self.queue, self.pointer[1] = update_queue(self.queue, self.pointer[1], feat_unlabeled)
+
+        feat_queue = feat_unlabeled_k if features_k is not None else feat_unlabeled
+        self.queue, self.pointer[1] = update_queue(self.queue, self.pointer[1], feat_queue)
 
         queue_sim = torch.mm(feat_labeled, self.queue.t())
         lut_sim = torch.mm(feat_labeled, self.lut.t())
@@ -154,6 +161,6 @@ class CIRCLELossComputation(nn.Module):
 
 
 def make_reid_loss_evaluator(cfg):
-    loss_evaluator = OIMLossComputation(cfg)
-    # loss_evaluator = CIRCLELossComputation(cfg)
+    # loss_evaluator = OIMLossComputation(cfg)
+    loss_evaluator = CIRCLELossComputation(cfg)
     return loss_evaluator
