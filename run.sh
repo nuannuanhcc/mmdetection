@@ -1,4 +1,4 @@
-python3 ./tools/train.py ./am_configs/reppoints.py --work-dir './work_dirs/4.8_cos_kl_2dic'
+python3 ./tools/train.py ./am_configs/reppoints.py --work-dir './work_dirs/4.8_cos_kl_cat'
 #python3 ./tools/train.py ./am_configs/fcos.py --work-dir './work_dirs/fcos'
 #python3 ./tools/train.py ./am_configs/retinanet.py --work-dir './work_dirs/retinanet'
 #python3 ./tools/train.py ./am_configs/atss.py --work-dir './work_dirs/atss'
