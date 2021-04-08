@@ -137,10 +137,6 @@ class CIRCLELossComputation(nn.Module):
             feat_labeled_k = features_k[pids > -1]
             feat_unlabeled_k = features_k[pids == -1]
 
-        if not id_labeled.numel():
-            loss = F.cross_entropy(features.mm(self.lut.t()), pids, ignore_index=-1)
-            return loss
-
         # feature_level
         loss_cos = 1 - features.mm(features_crop.t()).diag().mean()
 
@@ -152,6 +148,11 @@ class CIRCLELossComputation(nn.Module):
         p = F.softmax(sim)
         q = F.softmax(sim_crop)
         loss_kl = F.kl_div(log_p, q, reduction='sum') + F.kl_div(log_q, p, reduction='sum')
+
+        if not id_labeled.numel():
+            return loss_cos + loss_kl
+
+
 
         feat_lut = feat_labeled_k if features_k is not None else feat_labeled
         self.lut, _ = update_queue(self.lut, self.pointer[0], feat_lut)
