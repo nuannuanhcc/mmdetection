@@ -124,6 +124,7 @@ class CIRCLELossComputation(nn.Module):
         self.register_buffer('pointer', torch.zeros(2, dtype=torch.int).cuda())
         self.register_buffer('id_inx', -torch.ones(num_labeled, dtype=torch.long).cuda())
         self.register_buffer('lut', torch.zeros(num_labeled, self.out_channels).cuda())
+        self.register_buffer('lut_crop', torch.zeros(num_labeled, self.out_channels).cuda())
         # self.register_buffer('queue', torch.zeros(num_unlabeled, self.out_channels).cuda())
 
     def forward(self, features, features_crop, gt_labels, features_k=None):
@@ -131,6 +132,7 @@ class CIRCLELossComputation(nn.Module):
         pids = torch.cat([i[:, -1] for i in gt_labels])
         id_labeled = pids[pids > -1]
         feat_labeled = features[pids > -1]
+        feat_labeled_crop = features_crop[pids > -1]
         feat_unlabeled = features[pids == -1]
         if features_k is not None:
             feat_labeled_k = features_k[pids > -1]
@@ -155,6 +157,9 @@ class CIRCLELossComputation(nn.Module):
         feat_lut = feat_labeled_k if features_k is not None else feat_labeled
         self.lut, _ = update_queue(self.lut, self.pointer[0], feat_lut)
 
+        feat_lut_crop = feat_labeled_crop
+        self.lut_crop, _ = update_queue(self.lut_crop, self.pointer[0], feat_lut_crop)
+
         self.id_inx, self.pointer[0] = update_queue(self.id_inx, self.pointer[0], id_labeled)
 
         # feat_queue = feat_unlabeled_k if features_k is not None else feat_unlabeled
@@ -168,7 +173,17 @@ class CIRCLELossComputation(nn.Module):
         # sim_an = torch.cat((queue_sim, sim_an), dim=-1)
 
         pair_loss = circle_loss(sim_ap, sim_an)
-        return pair_loss + loss_cos + loss_kl
+
+        # crop
+        lut_sim_crop = torch.mm(feat_labeled_crop, self.lut_crop.t())
+        positive_mask = id_labeled.view(-1, 1) == self.id_inx.view(1, -1)
+        sim_ap = lut_sim_crop.masked_fill(~positive_mask, float("inf"))
+        sim_an = lut_sim_crop.masked_fill(positive_mask, float("-inf"))
+        # sim_an = torch.cat((queue_sim, sim_an), dim=-1)
+
+        pair_loss_crop = circle_loss(sim_ap, sim_an)
+
+        return (pair_loss + pair_loss_crop) / 2 + loss_cos + loss_kl
 
 
 def make_reid_loss_evaluator(cfg):

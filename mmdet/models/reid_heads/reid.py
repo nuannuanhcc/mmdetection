@@ -27,7 +27,7 @@ class REIDModule(torch.nn.Module):
             # feats_cat = torch.cat([feats_crop, feats], dim=-1)
 
         if not self.training:
-            return feats
+            return torch.cat([feats_crop, feats], dim=-1)
         else:
             return feats, feats_crop
 
