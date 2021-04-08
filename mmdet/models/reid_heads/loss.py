@@ -119,19 +119,20 @@ class CIRCLELossComputation(nn.Module):
         else:
             raise KeyError(cfg.DATASETS.TRAIN)
 
-        self.out_channels = 4096
+        self.out_channels = 2048
 
         self.register_buffer('pointer', torch.zeros(2, dtype=torch.int).cuda())
         self.register_buffer('id_inx', -torch.ones(num_labeled, dtype=torch.long).cuda())
         self.register_buffer('lut', torch.zeros(num_labeled, self.out_channels).cuda())
+        self.register_buffer('lut_crop', torch.zeros(num_labeled, self.out_channels).cuda())
         # self.register_buffer('queue', torch.zeros(num_unlabeled, self.out_channels).cuda())
 
     def forward(self, features, features_crop, gt_labels, features_k=None):
-        feats_cat = torch.cat([features_crop, features], dim=-1)
+
         pids = torch.cat([i[:, -1] for i in gt_labels])
         id_labeled = pids[pids > -1]
-        feat_labeled = feats_cat[pids > -1]
-
+        feat_labeled = features[pids > -1]
+        feat_labeled_crop = features_crop[pids > -1]
         feat_unlabeled = features[pids == -1]
         if features_k is not None:
             feat_labeled_k = features_k[pids > -1]
@@ -150,11 +151,18 @@ class CIRCLELossComputation(nn.Module):
         loss_kl = F.kl_div(log_p, q, reduction='sum') + F.kl_div(log_q, p, reduction='sum')
 
         if not id_labeled.numel():
-            return loss_cos + loss_kl
+            return loss_cos+loss_kl
 
         feat_lut = feat_labeled_k if features_k is not None else feat_labeled
         self.lut, _ = update_queue(self.lut, self.pointer[0], feat_lut)
+
+        feat_lut_crop = feat_labeled_crop
+        self.lut_crop, _ = update_queue(self.lut_crop, self.pointer[0], feat_lut_crop)
+
         self.id_inx, self.pointer[0] = update_queue(self.id_inx, self.pointer[0], id_labeled)
+
+        # feat_queue = feat_unlabeled_k if features_k is not None else feat_unlabeled
+        # self.queue, self.pointer[1] = update_queue(self.queue, self.pointer[1], feat_queue)
 
         # queue_sim = torch.mm(feat_labeled, self.queue.t())
         lut_sim = torch.mm(feat_labeled, self.lut.t())
@@ -165,7 +173,16 @@ class CIRCLELossComputation(nn.Module):
 
         pair_loss = circle_loss(sim_ap, sim_an)
 
-        return pair_loss + loss_cos + loss_kl
+        # crop
+        lut_sim_crop = torch.mm(feat_labeled_crop, self.lut_crop.t())
+        positive_mask = id_labeled.view(-1, 1) == self.id_inx.view(1, -1)
+        sim_ap = lut_sim_crop.masked_fill(~positive_mask, float("inf"))
+        sim_an = lut_sim_crop.masked_fill(positive_mask, float("-inf"))
+        # sim_an = torch.cat((queue_sim, sim_an), dim=-1)
+
+        pair_loss_crop = circle_loss(sim_ap, sim_an)
+
+        return (pair_loss + pair_loss_crop) / 2 + loss_cos + loss_kl
 
 
 def make_reid_loss_evaluator(cfg):
