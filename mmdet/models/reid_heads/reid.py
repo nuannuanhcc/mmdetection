@@ -13,13 +13,23 @@ class REIDModule(torch.nn.Module):
         super(REIDModule, self).__init__()
         self.cfg = cfg
         self.loss_evaluator = make_reid_loss_evaluator(cfg)
-        self.fc = nn.Linear(256 * 7 * 7, 2048)
+        self.fc = nn.Linear(256 * 12 * 4, 2048)
 
-    def forward(self, x, gt_labels=None):
+    def forward(self, x, x_crop=None, gt_labels=None):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         feats = F.normalize(x, dim=-1)
-        return feats
+
+        if x_crop is not None:
+            x_crop = x_crop.view(x_crop.size(0), -1)
+            x_crop = self.fc(x_crop)
+            feats_crop = F.normalize(x_crop, dim=-1)
+            # feats_cat = torch.cat([feats_crop, feats], dim=-1)
+
+        if not self.training:
+            return feats
+        else:
+            return feats, feats_crop
 
 
 def build_reid(cfg):
