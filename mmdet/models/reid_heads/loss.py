@@ -152,10 +152,9 @@ class CIRCLELossComputation(nn.Module):
         if not id_labeled.numel():
             return loss_cos + loss_kl
 
-
-
         feat_lut = feat_labeled_k if features_k is not None else feat_labeled
         self.lut, _ = update_queue(self.lut, self.pointer[0], feat_lut)
+        self.id_inx, self.pointer[0] = update_queue(self.id_inx, self.pointer[0], id_labeled)
 
         # queue_sim = torch.mm(feat_labeled, self.queue.t())
         lut_sim = torch.mm(feat_labeled, self.lut.t())
