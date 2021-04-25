@@ -214,8 +214,19 @@ class CustomDataset(Dataset):
         results = dict(img_info=img_info, ann_info=ann_info)
         if self.proposals is not None:
             results['proposals'] = self.proposals[idx]
+        results_moco = results.copy()
+
         self.pre_pipeline(results)
-        return self.pipeline(results)
+        data = self.pipeline(results)
+
+        if not self.is_query:
+            self.pre_pipeline(results_moco)
+            moco_data = self.pipeline(results_moco)
+            data['img_moco'] = moco_data['img']
+            data['gt_bboxes_moco'] = moco_data['gt_bboxes']
+            data['gt_labels_moco'] = moco_data['gt_labels']
+            data['img_metas_moco'] = moco_data['img_metas']
+        return data
 
     def prepare_test_img(self, idx):
         """Get testing data  after pipeline.

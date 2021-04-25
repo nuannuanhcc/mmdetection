@@ -233,11 +233,20 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
         """
         if momentum_encoder is not None:
             data_k = data.copy()
+            data_k['img'] = data_k.pop('img_moco')
+            data_k['gt_bboxes'] = data_k.pop('gt_bboxes_moco')
+            data_k['gt_labels'] = data_k.pop('gt_labels_moco')
+            data_k.pop('img_metas_moco')
+
             data_k['img_metas'] = 'use_moco'
             feats_k = momentum_encoder(**data_k)
         else:
             feats_k = None
 
+        data.pop('img_moco')
+        data.pop('gt_bboxes_moco')
+        data.pop('gt_labels_moco')
+        data.pop('img_metas_moco')
         losses, feats = self(**data)
         loss_reid = self.reid_head.loss_evaluator(feats, data['gt_labels'], feats_k)
         losses.update({"loss_reid": [loss_reid], })

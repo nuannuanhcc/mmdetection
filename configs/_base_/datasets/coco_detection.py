@@ -12,6 +12,28 @@ train_pipeline = [
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='Resize', img_scale=img_size, keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
+    # dict(type='Albu', transforms=[
+    #         dict(
+    #             type='RandomBrightnessContrast',
+    #             brightness_limit=[0.1, 0.3],
+    #             contrast_limit=[0.1, 0.3],
+    #             p=0.0),
+    #         dict(
+    #             type='HueSaturationValue',
+    #             hue_shift_limit=20,
+    #             sat_shift_limit=30,
+    #             val_shift_limit=20,
+    #             p=0.0),
+    #         dict(type='Blur', blur_limit=4, p=0.0),
+    #         dict(type='GaussNoise',
+    #              var_limit=(10.0, 50.0),
+    #              mean=0.0,
+    #              p=0.0)
+    # ]),
+#     dict(type='MinIoURandomCrop', min_ious=( 0.7,0.9,), min_crop_size=0.3),
+#     dict(type='CutOut', n_holes=(1,2),cutout_ratio=(0.01,0.1),fill_in=(0,0,0)),
+#     dict(type='Expand', ratio_range=(1,1.5), prob=1.0),
+#     dict(type='Corrupt', corruption='gaussian_noise',severity=5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
     dict(type='DefaultFormatBundle'),
